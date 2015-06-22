@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Rx Morse (JS)</title>
+
+    <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.5.2/rx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.5.2/rx.async.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.5.2/rx.binding.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.5.2/rx.time.js"></script>
+    <script src="./rx.morse.js"></script>
+</head>
+<body>
+<h1>Rx Morse window - Examples</h1>
+<div id="morse" style="height: 300px; width: 300px; background-color: lavender"></div>
+<p id="ticker"></p>
+
+<script>
+    RxMorse.init({}, "morse", "ticker");
+</script>
+</body>
+</html>
