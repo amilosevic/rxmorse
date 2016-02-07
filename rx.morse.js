@@ -4,11 +4,9 @@
 
 
 Rx.Observable.prototype.timeoutContinue = function(dueTime, element, predicate, scheduler) {
-    Rx.Scheduler.isScheduler(scheduler) || (scheduler = Rx.Scheduler.timeout);
+    Rx.Scheduler.isScheduler(scheduler) || (scheduler = Rx.Scheduler.default);
 
-    var source = this, schedulerMethod = dueTime instanceof Date ?
-        'scheduleWithAbsolute' :
-        'scheduleWithRelative';
+    var source = this;
 
     return new Rx.AnonymousObservable(function (observer){
         var id = 0;
@@ -19,7 +17,7 @@ Rx.Observable.prototype.timeoutContinue = function(dueTime, element, predicate, 
         function createTimer() {
             var myId = id;
 
-            timer.setDisposable(scheduler[schedulerMethod](dueTime, function() {
+            timer.setDisposable(scheduler.scheduleFuture(element, dueTime, function() {
                 if (id === myId) {
                     observer.onNext(element);
                     createTimer();
@@ -75,32 +73,86 @@ RxMorse = (function () {
         var unit = 130;
 
         var pad = document.getElementById(padsel);
-
         var ticker = document.getElementById(tickersel);
-        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) {return e.button == 0});
 
+        // event sources
+        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) {return e.button == 0});
         var mouseup = Rx.Observable.fromEvent(pad, 'mouseup').filter(function (e) {return e.button == 0});
         var keydown = Rx.Observable.fromEvent(document, 'keydown').filter(function (e) {return e.which == 32; });
-
-
         var keyup = Rx.Observable.fromEvent(document, 'keyup').filter(function (e) {return e.which == 32;});
+
+
 
         var mouse = Rx.Observable.merge(mousedown, mouseup)
             .do(function(e) {e.preventDefault()})
             .map(function(e) {return e.type})
             .distinctUntilChanged()
-            .timeoutContinue(unit, 'timeout', function(x) {return x == 'mouseup'})
-            .timeInterval();
+            .timestamp();
 
 
         var keyboard = Rx.Observable.merge(keydown, keyup)
             .do(function(e) {e.preventDefault()})
             .map(function(e) {return e.type})
             .distinctUntilChanged()
-            .timeoutContinue(unit, 'timeout', function(x) {return x == 'keyup'})
-            .timeInterval();
+            .timestamp();
 
-        var source = Rx.Observable.merge(mouse, keyboard)
+
+        var keyboardSubject = new Rx.Subject();
+        var keyboardLast = null;
+
+        keyboard.subscribe(
+            function (x) {
+                keyboardSubject.onNext(x);
+                xmod = {
+                    timestamp: x.timestamp,
+                    value: x.value + '*'
+                };
+                keyboardLast = x.timestamp;
+
+                Rx.Observable.just(xmod)
+                    .delay(3*unit)
+                    .subscribe(
+                        function (x1) {
+                            if (x1.timestamp == keyboardLast) {
+                                keyboardSubject.onNext(x1);
+                            }
+                        }
+                    )
+            },
+            function (e) { keyboardSubject.onError(); },
+            function () { keyboardSubject.onCompleted() }
+        );
+
+        var mouseSubject = new Rx.Subject();
+        var mouseLast = null;
+
+        mouse.subscribe(
+            function (x) {
+                mouseSubject.onNext(x);
+                xmod = {
+                    timestamp: x.timestamp,
+                    value: x.value + '*'
+                };
+                mouseLast = x.timestamp;
+
+                Rx.Observable.just(xmod)
+                    .delay(3*unit)
+                    .subscribe(
+                    function (x1) {
+                        if (x1.timestamp == mouseLast) {
+                            mouseSubject.onNext(x1);
+                        }
+                    }
+                )
+            },
+            function (e) { mouseSubject.onError(); },
+            function () { mouseSubject.onCompleted() }
+        );
+
+        var source = Rx.Observable.merge(mouseSubject, keyboardSubject)
+            .filter(function (x) {
+                return x.value != 'keyup*' && x.value != 'mouseup*';
+            })
             .map(function (a) {
 
                 var typ;
@@ -108,23 +160,26 @@ RxMorse = (function () {
                 switch (a.value) {
                     case 'keydown':
                     case 'mousedown':
-                        typ = '='; break;
+                        typ = 'down'; break;
                     case 'keyup':
                     case 'mouseup':
-                        typ = ''; break;
-                    case 'timeout':
-                        typ = '!';
-
+                        typ = 'up'; break;
+                    //case 'keyup*':
+                    case 'keydown*':
+                    //case 'mouseup*':
+                    case 'mousedown*':
+                        typ = 'up'; break;
+                    default:
+                        typ = 'forgetaboutit'
                 }
 
-                return {
-                    duration : a.interval,
-                    type: typ
-                }
-            });
+                return typ;
+            })
+            .distinctUntilChanged()
+            .timeInterval();
 
         var symbols = source.filter(function (e) {return e.type != ''}).map(function (e) {
-           if (e.type == '=') {
+           if (e.type == 'down') {
                if (e.duration < unit) {
                    return '=';
                } else if (e.duration >= unit) {
@@ -232,14 +287,14 @@ RxMorse = (function () {
         //    }
         //);
         var subscription2 = source.subscribe(function (e) {
-           console.log(e)
+           console.log(e.interval + " // "  + e.value)
         });
 
-        var subscription2 = symbols.subscribe(
-            function (x) {
-                ticker.innerHTML += (x == '..........' ? "<br/>" : x) ;
-            }
-        );
+        //var subscription2 = symbols.subscribe(
+        //    function (x) {
+        //        ticker.innerHTML += (x == '..........' ? "<br/>" : x + ", ") ;
+        //    }
+        //);
 
 
         //
