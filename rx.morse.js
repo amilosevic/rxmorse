@@ -2,64 +2,23 @@
  * Created by aleksandar on 6/21/15.
  */
 
+const qbf = 'THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 0123456789';
+const sos = 'SOS';
 
-Rx.Observable.prototype.timeoutContinue = function(dueTime, element, predicate, scheduler) {
-    Rx.Scheduler.isScheduler(scheduler) || (scheduler = Rx.Scheduler.default);
+const dit = '='; // dot
+const dah = '==='; // dash
+const ss = 'SS';
+const ls = 'LS';
+const ws = 'WS';
+const cr = 'CR';
 
-    var source = this;
 
-    return new Rx.AnonymousObservable(function (observer){
-        var id = 0;
-        var switched = false;
-        var timer = new Rx.SerialDisposable();
-        var original = new Rx.SingleAssignmentDisposable();
+const _top_ = '*';
 
-        function createTimer() {
-            var myId = id;
+const s = '.'; // space
+const sss = '...'; // letter space
+const sssssss = '.......'; // word space
 
-            timer.setDisposable(scheduler.scheduleFuture(element, dueTime, function() {
-                if (id === myId) {
-                    observer.onNext(element);
-                    createTimer();
-                }
-            }))
-
-        }
-
-        original.setDisposable(source.subscribe(
-            function (x) {
-                if (!switched) {
-                    id++;
-                    observer.onNext(x);
-                    if (predicate(x)) {
-                        createTimer();
-                    }
-                }
-
-            },
-
-            function (e) {
-                if (!switched) {
-                    id++;
-                    observer.onError(e);
-                }
-
-            },
-
-            function () {
-                if (!switched) {
-                    id++;
-                    observer.onComplete();
-                }
-
-            }
-
-        ));
-
-        return new Rx.CompositeDisposable(original, timer);
-
-    }, source);
-};
 
 var RxMorse;
 RxMorse = (function () {
@@ -68,142 +27,84 @@ RxMorse = (function () {
 
     // -- public --
 
-    rxMorse.init = function (props, padsel, tickersel) {
+    function subjectize(observable, unit) {
+        var subject = new Rx.Subject();
+        var last = null;
+        var completed = false;
 
-        var unit = 130;
-
-        var pad = document.getElementById(padsel);
-        var ticker = document.getElementById(tickersel);
-
-        // event sources
-        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) {return e.button == 0});
-        var mouseup = Rx.Observable.fromEvent(pad, 'mouseup').filter(function (e) {return e.button == 0});
-        var keydown = Rx.Observable.fromEvent(document, 'keydown').filter(function (e) {return e.which == 32; });
-        var keyup = Rx.Observable.fromEvent(document, 'keyup').filter(function (e) {return e.which == 32;});
-
-
-
-        var mouse = Rx.Observable.merge(mousedown, mouseup)
-            .do(function(e) {e.preventDefault()})
-            .map(function(e) {return e.type})
-            .distinctUntilChanged()
-            .timestamp();
-
-
-        var keyboard = Rx.Observable.merge(keydown, keyup)
-            .do(function(e) {e.preventDefault()})
-            .map(function(e) {return e.type})
-            .distinctUntilChanged()
-            .timestamp();
-
-
-        var keyboardSubject = new Rx.Subject();
-        var keyboardLast = null;
-
-        keyboard.subscribe(
+        observable.subscribe(
             function (x) {
-                keyboardSubject.onNext(x);
-                xmod = {
-                    timestamp: x.timestamp,
-                    value: x.value + '*'
-                };
-                keyboardLast = x.timestamp;
+                last = x.timestamp;
 
-                Rx.Observable.just(xmod)
-                    .delay(3*unit)
-                    .subscribe(
+                if (x.value.endsWith('up')) {
+
+                    xmod3 = {
+                        value: ls,
+                        timestamp: x.timestamp
+                    };
+
+                    Rx.Observable.just(xmod3)
+                        .delay(3 * unit * 0.9)
+                        .subscribe(
                         function (x1) {
-                            if (x1.timestamp == keyboardLast) {
-                                keyboardSubject.onNext(x1);
+                            if (x1.timestamp == last) {
+                                //last = null;
+                                x1.__timestamp = Date.now();
+                                //console.log(x1);
+                                subject.onNext(x1);
+                                if (completed) {
+                                    subject.onCompleted();
+                                }
                             }
                         }
-                    )
-            },
-            function (e) { keyboardSubject.onError(); },
-            function () { keyboardSubject.onCompleted() }
-        );
+                    );
 
-        var mouseSubject = new Rx.Subject();
-        var mouseLast = null;
+                    xmod7 = {
+                        value: ws,
+                        timestamp: x.timestamp
+                    };
 
-        mouse.subscribe(
-            function (x) {
-                mouseSubject.onNext(x);
-                xmod = {
-                    timestamp: x.timestamp,
-                    value: x.value + '*'
-                };
-                mouseLast = x.timestamp;
-
-                Rx.Observable.just(xmod)
-                    .delay(3*unit)
-                    .subscribe(
-                    function (x1) {
-                        if (x1.timestamp == mouseLast) {
-                            mouseSubject.onNext(x1);
+                    Rx.Observable.just(xmod7)
+                        .delay(7 * unit * 0.9)
+                        .subscribe(
+                        function (x1) {
+                            if (x1.timestamp == last) {
+                                //last = null;
+                                x1.__timestamp = Date.now();
+                                //console.log(x1);
+                                subject.onNext(x1);
+                                if (completed) {
+                                    subject.onCompleted();
+                                }
+                            }
                         }
-                    }
-                )
-            },
-            function (e) { mouseSubject.onError(); },
-            function () { mouseSubject.onCompleted() }
-        );
+                    );
 
-        var source = Rx.Observable.merge(mouseSubject, keyboardSubject)
-            .filter(function (x) {
-                return x.value != 'keyup*' && x.value != 'mouseup*';
-            })
-            .map(function (a) {
 
-                var typ;
-
-                switch (a.value) {
-                    case 'keydown':
-                    case 'mousedown':
-                        typ = 'down'; break;
-                    case 'keyup':
-                    case 'mouseup':
-                        typ = 'up'; break;
-                    //case 'keyup*':
-                    case 'keydown*':
-                    //case 'mouseup*':
-                    case 'mousedown*':
-                        typ = 'up'; break;
-                    default:
-                        typ = 'forgetaboutit'
                 }
 
-                return typ;
-            })
-            .distinctUntilChanged()
-            .timeInterval();
 
-        var symbols = source.filter(function (e) {return e.type != ''}).map(function (e) {
-           if (e.type == 'down') {
-               if (e.duration < unit) {
-                   return '=';
-               } else if (e.duration >= unit) {
-                   return '===';
-               }
-           } else if (e.type == '.') {
-               if (e.duration  < 3*unit) {
-                   return '.';
-               } else if (e.duration >= 3*unit && e.duration < 7*unit) {
-                   return '...';
-               } else if (e.duration >= 7*unit && e.duration < 20*unit){
-                   return '.......';
-               } else {
-                   return '...........';
-               }
-           } else if (e.type == '!') {
-               return '.';
-           }
-        });
+            },
+            function (e) {
+                subject.onError();
+            },
+            function () {
+                if (completed == false && last == null) {
+                    subject.onCompleted();
+                } else {
+                    completed = true;
+                }
+            }
+        );
+        return subject;
+    }
+
+    rxMorse.init = function (props, padsel, tickersel) {
 
         var end = '';
-        var huffman = {
+        var huffmanIn = {
             // 0 level
-             '' : { '===' : 'T', '=' : 'E'},
+            '*' : { '===' : 'T', '=' : 'E'}, // _top_
 
             // I level
             'T' : { '===' : 'M', '=' : 'N'},
@@ -244,57 +145,246 @@ RxMorse = (function () {
             'H' : { '===' : '4', '=' : '5'}//,
 
             // V level
-            // @todo .. clean up previos levels to confirm to ITU M.1677 : International Morse code
+            // @todo .. clean up previous levels to confirm to ITU M.1677 : International Morse code
             // @todo .. fill V level table
             // @todo .. add 1.1.3 Punctuation marks and miscellaneous signs
 
         };
 
+        var huffmanOut = {
+
+            'A' : [dit, dah],
+            'B' : [dah, dit, dit, dit],
+            'C' : [dah, dit, dah, dit],
+            'D' : [dah, dit, dit],
+            'E' : [dit],
+            'F' : [dit, dit, dah, dit],
+            'G' : [dah, dah, dit],
+            'H' : [dit, dit, dit, dit],
+            'I' : [dit, dit],
+            'J' : [dit, dah, dah, dah],
+            'K' : [dah, dit, dah],
+            'L' : [dit, dah, dit, dit],
+            'M' : [dah, dah],
+            'N' : [dah, dit],
+            'O' : [dah, dah, dah],
+            'P' : [dit, dah, dah, dit],
+            'Q' : [dah, dah, dit, dah],
+            'R' : [dit, dah, dit],
+            'S' : [dit, dit, dit],
+            'T' : [dah],
+            'U' : [dit, dit, dah],
+            'V' : [dit, dit, dit, dah],
+            'W' : [dit, dah, dah],
+            'X' : [dah, dit, dit, dah],
+            'Y' : [dah, dit, dah, dah],
+            'Z' : [dah, dah, dit, dit],
+
+            '1' : [dit, dah, dah, dah, dah],
+            '2' : [dit, dit, dah, dah, dah],
+            '3' : [dit, dit, dit, dah, dah],
+            '4' : [dit, dit, dit, dit, dah],
+            '5' : [dit, dit, dit, dit, dit],
+            '6' : [dah, dit, dit, dit, dit],
+            '7' : [dah, dah, dit, dit, dit],
+            '8' : [dah, dah, dah, dit, dit],
+            '9' : [dah, dah, dah, dah, dit],
+            '0' : [dah, dah, dah, dah, dah],
+
+            ' ' : [sssssss]
+        };
+
+        var unit = 130;
+
+        var pad = document.getElementById(padsel);
+        var ticker = document.getElementById(tickersel);
+
+        // event sources
+        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) {return e.button == 0});
+        var mouseup = Rx.Observable.fromEvent(pad, 'mouseup').filter(function (e) {return e.button == 0});
+        var keydown = Rx.Observable.fromEvent(document, 'keydown').filter(function (e) {return e.which == 32; });
+        var keyup = Rx.Observable.fromEvent(document, 'keyup').filter(function (e) {return e.which == 32;});
+
+
+
+        var mouse = Rx.Observable.merge(mousedown, mouseup)
+            .do(function(e) {e.preventDefault()})
+            .map(function(e) {return e.type})
+            .distinctUntilChanged()
+            .timestamp();
+
+
+        var keyboard = Rx.Observable.merge(keydown, keyup)
+            .do(function(e) {e.preventDefault()})
+            .map(function(e) {return e.type})
+            .distinctUntilChanged()
+            .timestamp();
+
+        var robot = Rx.Observable
+            .from(qbf).delay(1000)
+            .concatMap(function (x) {
+                if (x in huffmanOut) {
+                    return Rx.Observable.from(huffmanOut[x].concat(sss));
+                } else {
+                    return Rx.Observable.throw(new Error('** ' + x ));
+                }
+            })
+            .concatMap(function (x) {
+                switch (x) {
+                    case dit:
+                        return Rx.Observable.concat(
+                            Rx.Observable.just("robotdown"),
+                            Rx.Observable.just("robotup").delay(1*unit),
+                            Rx.Observable.empty().delay(1*unit)
+                        );
+                    case dah:
+                        return Rx.Observable.concat(
+                            Rx.Observable.just("robotdown"),
+                            Rx.Observable.just("robotup").delay(3*unit),
+                            Rx.Observable.empty().delay(1*unit)
+                        );
+                    case sss:
+                        return Rx.Observable.empty().delay(3*unit);
+                    case sssssss:
+                        return Rx.Observable.empty().delay(7*unit);
+                    default:
+                        return Rx.Observable.throw(new Error('***'));
+                }
+            })
+            .timestamp();
+
+        //robot.subscribe(
+        //    function (x) { console.log(x); },
+        //    function (e) { console.log("Error: " + e)},
+        //    function () { console.log('Complete'); }
+        //);
+
+        var inputs = Rx.Observable.merge(mouse, keyboard, robot);
+
+        var spacer = subjectize(inputs, unit);
+
+        var merged = Rx.Observable.merge(inputs, spacer)
+        var source = merged
+            .map(function (a) {
+
+                var typ;
+
+                switch (a.value) {
+                    case 'robotdown':
+                    case 'keydown':
+                    case 'mousedown':
+                        typ = 'down'; break;
+                    case 'keyup':
+                    case 'robotup':
+                    case 'mouseup':
+                        typ = 'up'; break;
+                    case ls:
+                    case ws:
+                        typ = a.value; break;
+
+                    default:
+                        typ = 'forgetaboutit'
+                }
+
+                return typ;
+            }).distinctUntilChanged();
+
+        var symbols = source.timeInterval()
+            .map(function (e) {
+                //console.log("-->" + e.interval + " // " + e.value);
+                if (e.value == 'up') {
+                    if (e.interval < 1.5 * unit) {
+                        return dit;
+                    } else if (e.interval >= 1.5 * unit) {
+                        return dah;
+                    }
+                } else if (e.value == 'down') {
+                    return '.';
+                } else if (e.value == ls) {
+                    return ls;
+                } else if (e.value == ws) {
+                    return ws;
+                } else {
+                    console.log('unhandled: ' + e.value);
+                }
+            }).filter(function (x) {return x != '.'});
+
+
         var transformed = Rx.Observable.concat(
-            Rx.Observable.fromArray(['']),
             symbols
         );
 
-
         var out = transformed.scan(
-                function (acc, x) {
+                function (acc, x, i, source) {
+
                     switch (x){
-                        case '' :
-                        case 'e' :
-                        case '.' :
-                            return acc;
+                        default:
+                        case ss:
+                            throw new Error("Could not handle: " + x);
+                        case ls:
+                            return {action : 'out', state : acc.state}; // reset state machine
+                        case ws:
+                            return {action : 'out', state : ' '}; // space
+                        case cr:
+                            return {action : 'out', state : "\n"}; // carrige return
 
-                        case '...':
-                        case '.......':
-                        case '..........':
-                            return '';
+                        case dit:
+                        case dah:
+                            var key;
+                            if (acc.action == 'out') {
+                                key = _top_;
+                            } else {
+                                key = acc.state;
+                            }
 
+                            var a = huffmanIn[key];
+                            if (a == undefined) {
+                                return {action : 'out', state: _top_ }
+                            }
 
-                        case '=':
-                        case '===' :
-                            var a = huffman[acc];
-                            return (a != undefined ? a[x] : '');
+                            return {action: 'wait', state: a[x]};
+
                     }
-                }
-        );
+                },
+            {action: 'wait', state: _top_}
+        ).filter(function (x) {return x.action == 'out'})
+            .map(function (x) {return x.state});
 
-
-        //var toContinue = transformed.timeoutContinue(3*unit, 't');
 
         //var subscription1 = Rx.Observable.zipArray(transformed, out).subscribe(
         //    function (x) {
         //        console.log(x)
         //    }
         //);
-        var subscription2 = source.subscribe(function (e) {
-           console.log(e.interval + " // "  + e.value)
-        });
 
-        //var subscription2 = symbols.subscribe(
-        //    function (x) {
-        //        ticker.innerHTML += (x == '..........' ? "<br/>" : x + ", ") ;
-        //    }
+        //var subscription2 = keyboardSubject.subscribe(function (e) {
+        //   console.log(e.timestamp + " // " + e.value);
+        //});
+
+        //var subscription2 = source.timestamp().subscribe(function (e) {
+        //    console.log('source: ' + e.timestamp + " // " + e.value);
+        //});
+
+        //var subscription3 = symbols.timestamp().subscribe(
+        //    function (x) { console.log('symbols: ' + x.timestamp + " // " + x.value); },
+        //    function (e) { console.log('error: ' + e)},
+        //    function () { console.log('onCompleted')}
         //);
+        var subscription3 = out.subscribe(
+            function (x) { console.log('out:' + x); },
+            function (e) { console.log('error: ' + e)},
+            function () { console.log('onCompleted')}
+        );
+
+        var subscription4 = source.subscribe(
+            function (x) {
+                if (x == 'down') {
+                    pad.style.backgroundColor = 'navy';
+                } else if (x == 'up') {
+                    pad.style.backgroundColor = 'lavender';
+                }
+            }
+        );
 
 
         //
