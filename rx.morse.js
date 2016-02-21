@@ -312,7 +312,7 @@ RxMorse = (function () {
                 if (e.value == 'up') {
                     if (e.interval < 1.5 * unit) {
                         return dit;
-                    } else if (e.interval >= 1.5 * unit) {
+                    } else /*if (e.interval >= 1.5 * unit)*/ {
                         return dah;
                     }
                 } else if (e.value == 'down') {
@@ -343,7 +343,7 @@ RxMorse = (function () {
                     case ws:
                         return {action: 'out', state: ' '}; // space
                     case cr:
-                        return {action: 'out', state: "\n"}; // carrige return
+                        return {action: 'out', state: "\n"}; // carriage return
 
                     case dit:
                     case dah:
