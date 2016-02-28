@@ -13,9 +13,24 @@
 </head>
 <body>
 <h1>Rx Morse window - Examples</h1>
-<div id="morse" style="height: 300px; width: 300px; background-color: lavender"></div>
-<p id="ticker"></p>
-<audio id="speaker" src="./wavTones.com.unregistred.sin_500Hz_-20dBFS_3s.wav" ></audio>
+
+<div>
+    <div style="float: left; width: 330px">
+        <div id="morse" style="height: 300px; width: 300px; background-color: lavender;"></div>
+        <p id="ticker" style="padding-right: 30px"></p>
+    </div>
+    <div style="float: left; padding-left: 10px">
+        <a title="James Kanjo at the English language Wikipedia [GFDL (http://www.gnu.org/copyleft/fdl.html) or CC-BY-SA-3.0 (http://creativecommons.org/licenses/by-sa/3.0/)], via Wikimedia Commons"
+           href="https://commons.wikimedia.org/wiki/File%3AInternational_Morse_Code.PNG">
+            <img alt="International Morse Code"
+                 src="https://upload.wikimedia.org/wikipedia/commons/1/1f/International_Morse_Code.PNG"/>
+        </a>
+    </div>
+    <div style="clear: both"></div>
+</div>
+
+
+<audio id="speaker" src="./wavTones.com.unregistred.sin_500Hz_-20dBFS_3s.wav"></audio>
 
 <script>
     RxMorse.init({}, "morse", "ticker", "speaker");
