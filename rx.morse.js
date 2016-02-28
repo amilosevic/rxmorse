@@ -7,13 +7,10 @@ const sos = 'SOS';
 
 const dit = '='; // dot
 const dah = '==='; // dash
-const ss = 'SS';
+
 const ls = 'LS';
 const ws = 'WS';
 const cr = 'CR';
-
-
-const _top_ = '*';
 
 const s = '.'; // space
 const sss = '...'; // letter space
@@ -120,12 +117,17 @@ RxMorse = (function () {
         return subject;
     }
 
-    rxMorse.init = function (props, padsel, tickersel) {
+    rxMorse.init = function (props, padsel, tickersel, speakersel) {
 
-        var end = '';
+        var err = '__err__';
+        var top = '__top__';
         var huffmanIn = {
+
+            // error handling
+            '__err__': {'===': err, '=': err}, // err
+
             // 0 level
-            '*': {'===': 'T', '=': 'E'}, // _top_
+            '__top__': {'===': 'T', '=': 'E'}, // _top_
 
             // I level
             'T': {'===': 'M', '=': 'N'},
@@ -149,21 +151,21 @@ RxMorse = (function () {
 
             // IV level
             'CH': {'===': '0', '=': '9'},
-            'Ö': {'===': end, '=': '8'},
+            'Ö': {'===': err, '=': '8'},
             'Q': {'===': 'Ñ', '=': 'Ĝ'},
-            'Z': {'===': '_Z', '=': '7'},
-            'Y': {'===': end, '=': 'Ĥ'},
-            'C': {'===': '_C', '=': 'Ç'},
-            'X': {'===': end, '=': '/'},
+            'Z': {'===': err /*'_Z'*/, '=': '7'},
+            'Y': {'===': err, '=': 'Ĥ'},
+            'C': {'===': err /*'_C'*/, '=': 'Ç'},
+            'X': {'===': err, '=': '/'},
             'B': {'===': '=', '=': '6'},
             'J': {'===': '1', '=': 'Ĵ'},
             'P': {'===': 'Á', '=': 'Þ'},
-            'Ä': {'===': end, '=': '+'},
-            'L': {'===': 'È', '=': end},
+            'Ä': {'===': err, '=': '+'},
+            'L': {'===': 'È', '=': err},
             'Ü': {'===': '2', '=': 'Đ'},
-            'F': {'===': end, '=': 'É'},
+            'F': {'===': err, '=': 'É'},
             'V': {'===': '3', '=': 'Ŝ'},
-            'H': {'===': '4', '=': '5'}//,
+            'H': {'===': '4', '=': '5'}
 
             // V level
             // @todo .. clean up previous levels to confirm to ITU M.1677 : International Morse code
@@ -219,6 +221,7 @@ RxMorse = (function () {
 
         var pad = document.getElementById(padsel);
         var ticker = document.getElementById(tickersel);
+        var speaker = document.getElementById(speakersel);
 
         // event sources
         var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) { return e.button == 0 });
@@ -307,6 +310,16 @@ RxMorse = (function () {
                 }
             });
 
+        source.subscribe(function (x) {
+            if (x == 'down') {
+                speaker.currentTime = 0;
+                speaker.volume = 1;
+                speaker.play();
+            } else if (x == 'up') {
+                speaker.pause()
+            }
+        });
+
         var symbols = source.timeInterval()
             .map(function (e) {
                 if (e.value == 'up') {
@@ -336,7 +349,6 @@ RxMorse = (function () {
 
                 switch (x) {
                     default:
-                    case ss:
                         throw new Error("Could not handle: " + x);
                     case ls:
                         return {action: 'out', state: acc.state}; // reset state machine
@@ -347,23 +359,16 @@ RxMorse = (function () {
 
                     case dit:
                     case dah:
-                        var key;
-                        if (acc.action == 'out') {
-                            key = _top_;
-                        } else {
-                            key = acc.state;
-                        }
+                        var key = (acc.action == 'out' ? top : acc.state);
+                        var node = huffmanIn[key];
 
-                        var a = huffmanIn[key];
-                        if (a == undefined) {
-                            return {action: 'out', state: _top_}
-                        }
+                        var state = (node == undefined ? err : node[x]);
 
-                        return {action: 'wait', state: a[x]};
+                        return {action: 'wait', state: state};
 
                 }
             },
-            {action: 'wait', state: _top_}
+            {action: 'wait', state: top}
         ).filter(function (x) {
                 return x.action == 'out'
             })
