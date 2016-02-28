@@ -123,9 +123,6 @@ RxMorse = (function () {
         var top = '__top__';
         var huffmanIn = {
 
-            // error handling
-            '__err__': {'===': err, '=': err}, // err
-
             // 0 level
             '__top__': {'===': 'T', '=': 'E'}, // _top_
 
@@ -351,11 +348,11 @@ RxMorse = (function () {
                     default:
                         throw new Error("Could not handle: " + x);
                     case ls:
-                        return {action: 'out', state: acc.state}; // reset state machine
+                        return {action: 'out', state: acc.state}; // output state and reset state machine in next step
                     case ws:
-                        return {action: 'out', state: ' '}; // space
+                        return {action: 'out', state: ' '}; // output space and reset ...
                     case cr:
-                        return {action: 'out', state: "\n"}; // carriage return
+                        return {action: 'out', state: "\n"}; // carriage return and reset ...
 
                     case dit:
                     case dah:
