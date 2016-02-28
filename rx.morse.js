@@ -121,7 +121,7 @@ RxMorse = (function () {
 
         var err = '__err__';
         var top = '__top__';
-        var huffmanIn = {
+        var morseIn = {
 
             // 0 level
             '__top__': {'===': 'T', '=': 'E'}, // _top_
@@ -171,7 +171,7 @@ RxMorse = (function () {
 
         };
 
-        var huffmanOut = {
+        var morseOut = {
 
             'A': [dit, dah],
             'B': [dah, dit, dit, dit],
@@ -251,8 +251,8 @@ RxMorse = (function () {
         var robot = Rx.Observable
             .from(qbf).delay(1000)
             .concatMap(function (x) {
-                if (x in huffmanOut) {
-                    return Rx.Observable.from(huffmanOut[x].concat(sss));
+                if (x in morseOut) {
+                    return Rx.Observable.from(morseOut[x].concat(sss));
                 } else {
                     return Rx.Observable.throw(new Error('** ' + x));
                 }
@@ -357,7 +357,7 @@ RxMorse = (function () {
                     case dit:
                     case dah:
                         var key = (acc.action == 'out' ? top : acc.state);
-                        var node = huffmanIn[key];
+                        var node = morseIn[key];
 
                         var state = (node == undefined ? err : node[x]);
 
