@@ -249,7 +249,7 @@ RxMorse = (function () {
             .timestamp();
 
         var robot = Rx.Observable
-            .from(qbf).delay(1000)
+            .from(sos).delay(1000)
             .concatMap(function (x) {
                 if (x in morseOut) {
                     return Rx.Observable.from(morseOut[x].concat(sss));
