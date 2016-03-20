@@ -13,8 +13,9 @@ const ws = 'WS';
 const cr = 'CR';
 
 const s = '.'; // space
-const sss = '...'; // letter space
-const sssssss = '.......'; // word space
+const sx3 = '...'; // letter space
+const sx7 = '.......'; // word space
+const sx20 = '......................'; // sentance space == new line
 
 
 var RxMorse;
@@ -31,6 +32,8 @@ RxMorse = (function () {
 
         observable.subscribe(
             function (x) {
+                //console.log(x);
+                subject.onNext(x);
                 last = x.timestamp;
 
                 if (x.value.endsWith('up')) {
@@ -41,7 +44,7 @@ RxMorse = (function () {
                     };
 
                     Rx.Observable.just(xmod3)
-                        .delay(3 * unit * 0.9)
+                        .delay(3 * unit *.9)
                         .subscribe(
                         function (x1) {
                             if (x1.timestamp == last) {
@@ -62,7 +65,7 @@ RxMorse = (function () {
                     };
 
                     Rx.Observable.just(xmod7)
-                        .delay(7 * unit * 0.9)
+                        .delay(7 * unit)
                         .subscribe(
                         function (x1) {
                             if (x1.timestamp == last) {
@@ -83,7 +86,7 @@ RxMorse = (function () {
                     };
 
                     Rx.Observable.just(xmod20)
-                        .delay(20 * unit * 0.9)
+                        .delay(20 * unit)
                         .subscribe(
                         function (x1) {
                             if (x1.timestamp == last) {
@@ -117,7 +120,7 @@ RxMorse = (function () {
         return subject;
     }
 
-    rxMorse.init = function (props, padsel, tickersel, speakersel) {
+    rxMorse.init = function (props, padsel, tickersel, speakersel, textsel, buttonsel) {
 
         var err = '__err__';
         var top = '__top__';
@@ -209,9 +212,8 @@ RxMorse = (function () {
             '7': [dah, dah, dit, dit, dit],
             '8': [dah, dah, dah, dit, dit],
             '9': [dah, dah, dah, dah, dit],
-            '0': [dah, dah, dah, dah, dah],
+            '0': [dah, dah, dah, dah, dah]
 
-            ' ': [sssssss]
         };
 
         var unit = 130;
@@ -219,12 +221,37 @@ RxMorse = (function () {
         var pad = document.getElementById(padsel);
         var ticker = document.getElementById(tickersel);
         var speaker = document.getElementById(speakersel);
+        var button = document.getElementById(buttonsel);
+        var text = document.getElementById(textsel);
+
 
         // event sources
-        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown').filter(function (e) { return e.button == 0 });
-        var mouseup = Rx.Observable.fromEvent(pad, 'mouseup').filter(function (e) { return e.button == 0 });
-        var keydown = Rx.Observable.fromEvent(document, 'keydown').filter(function (e) { return e.which == 32; });
-        var keyup = Rx.Observable.fromEvent(document, 'keyup').filter(function (e) { return e.which == 32; });
+        var mousedown = Rx.Observable.fromEvent(pad, 'mousedown')
+            .filter(function (e) { return e.button == 0 });
+
+        var mouseup = Rx.Observable.fromEvent(pad, 'mouseup')
+            .filter(function (e) { return e.button == 0 });
+
+        var keydown = Rx.Observable.fromEvent(document, 'keydown')
+            .filter(function (e) { return e.which == 32 && e.target != button && e.target != text; });
+
+        var keyup = Rx.Observable.fromEvent(document, 'keyup')
+            .filter(function (e) { return e.which == 32 && e.target != button && e.target != text; });
+
+        var texts = Rx.Observable.fromEvent(text, 'keypress')
+            .filter(function (e) {return e.which == 13; })
+            .map(function (e) {
+                var s = e.target.value;
+                e.target.value = "";
+                return s.toUpperCase();
+            });
+
+        var clicks = Rx.Observable.fromEvent(button, 'click')
+            .map(function (e) {
+                return sos;
+            });
+
+
 
 
         var mouse = Rx.Observable.merge(mousedown, mouseup)
@@ -248,11 +275,21 @@ RxMorse = (function () {
             .distinctUntilChanged()
             .timestamp();
 
-        var robot = Rx.Observable
-            .from(sos).delay(1000)
+        var textsandclicks = Rx.Observable.merge(texts, clicks);
+        var flatten = textsandclicks
+            .delay(500)
+            .concatMap(function (x) {
+                return Rx.Observable.from(x + "\n"); // add new line
+            });
+
+        var robot = flatten
             .concatMap(function (x) {
                 if (x in morseOut) {
-                    return Rx.Observable.from(morseOut[x].concat(sss));
+                    return Rx.Observable.from(morseOut[x].concat(sx3)); // add letter space
+                } else if (x == ' ') { // handle space
+                    return Rx.Observable.just(sx7);
+                } else if (x == '\n') { // handle new line
+                    return Rx.Observable.just(sx20);
                 } else {
                     return Rx.Observable.throw(new Error('** ' + x));
                 }
@@ -271,10 +308,12 @@ RxMorse = (function () {
                             Rx.Observable.just("robotup").delay(3 * unit),
                             Rx.Observable.empty().delay(1 * unit)
                         );
-                    case sss:
+                    case sx3:
                         return Rx.Observable.empty().delay(3 * unit);
-                    case sssssss:
+                    case sx7:
                         return Rx.Observable.empty().delay(7 * unit);
+                    case sx20:
+                        return Rx.Observable.empty().delay(20 * unit);
                     default:
                         return Rx.Observable.throw(new Error('***'));
                 }
@@ -287,7 +326,7 @@ RxMorse = (function () {
 
         var spacer = subjectize(inputs, unit);
 
-        var source = Rx.Observable.merge(inputs, spacer)
+        var source = Rx.Observable.merge(spacer)
             .map(function (a) {
                 switch (a.value) {
                     case 'robotdown':
@@ -372,6 +411,7 @@ RxMorse = (function () {
             .map(function (x) {
                 return x.state
             });
+
 
 
         var subscription4 = source.subscribe(

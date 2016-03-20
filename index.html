@@ -20,12 +20,12 @@
 <body>
 <h1>Rx Morse window - Examples</h1>
 
-<div id="frame" style="width: 780px; background-color: lightblue; padding: 10px; ">
+<div id="frame" style="width: 780px; background-color: lightblue; padding: 10px;">
     <!-- display -->
     <div style="float: left; width: 250px; margin-right: 10px">
 
             <div id="pad-container">
-                <div id="pad" style="background-color: lavender; height: 250px; border: 0px solid gray">
+                <div id="pad" style="background-color: lavender; height: 250px; ">
 
                 </div>
             </div>
@@ -51,11 +51,11 @@
     <!-- control -->
 
     <div style="width: 600px; float: left; margin-right: 10px">
-        <input style="display: block; width: 100%; "/>
+        <input id="text" style="display: block; width: 100%; "/>
     </div>
 
     <div style="width: 150px; float: left;">
-        <button style="display: block; width: 100%;">Send</button>
+        <button id="button" style="display: block; width: 100%;">Send SOS!</button>
     </div>
 
     <div style="clear: both;  width: 760px;"></div>
@@ -66,7 +66,7 @@
 <audio id="speaker" src="./wavTones.com.unregistred.sin_500Hz_-20dBFS_3s.wav"></audio>
 
 <script>
-    RxMorse.init({}, "pad", "ticker", "speaker");
+    RxMorse.init({}, "pad", "ticker", "speaker", "text", "button");
 </script>
 </body>
 </html>
