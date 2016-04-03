@@ -18,107 +18,92 @@ const sx7 = '.......'; // word space
 const sx20 = '......................'; // sentance space == new line
 
 
+Rx.Observable.prototype.spacer = function (unit) {
+
+    var source = this,
+        scheduler = Rx.Scheduler.default;
+
+    return Rx.Observable.create(function (observer) {
+
+        var completed = false,
+            error = false,
+            last = null;
+
+        return source.subscribe(
+            // onNext
+            function (x) {
+                var time = scheduler.now();
+                last = time;
+
+                // send x
+                scheduler.schedule(x, function(sched, x) {
+                    if (!completed && !error) {
+                        observer.onNext(x)
+                    }
+                });
+
+                // schedule LS
+                scheduler.scheduleFuture(ls, 3 * unit * 1.05, function(sched, x) {
+                    if (!error && last != null && time == last) {
+                        observer.onNext(x);
+                    }
+                });
+
+                // schedule WS
+                scheduler.scheduleFuture(ws, 7 * unit * 1.05, function(sched, x) {
+                    if (!error && last != null && time == last) {
+                        observer.onNext(x);
+                    }
+                });
+
+                // schedule CR
+                scheduler.scheduleFuture(cr, 20 * unit * 1.05, function(sched, x) {
+                    if (!error && last != null && time == last) {
+                        observer.onNext(x);
+                        if (completed) {
+                            observer.onCompleted();
+                        }
+                    }
+                });
+
+            },
+            // onError
+            function (e) {
+                scheduler.schedule(e, function(sched, x) {
+                    if (!completed && !error) {
+                        error = true;
+                        observer.onError(e);
+                    }
+                });
+
+            },
+            // onComplete
+            function () {
+                scheduler.schedule(null, function(sched, x) {
+                    if (!completed && !error && last == null) {
+                        observer.onCompleted();
+                    }
+
+                    if (!completed && !error) {
+                        completed = true;
+                    }
+                });
+
+            }
+        );
+
+
+    });
+
+};
+
+
 var RxMorse;
 RxMorse = (function () {
 
     var rxMorse = {};
 
     // -- public --
-
-    function subjectize(observable, unit) {
-        var subject = new Rx.Subject();
-        var last = null;
-        var completed = false;
-
-        observable.subscribe(
-            function (x) {
-                //console.log(x);
-                subject.onNext(x);
-                last = x.timestamp;
-
-                if (x.value.endsWith('up')) {
-
-                    xmod3 = {
-                        value: ls,
-                        timestamp: x.timestamp
-                    };
-
-                    Rx.Observable.just(xmod3)
-                        .delay(3 * unit *.9)
-                        .subscribe(
-                        function (x1) {
-                            if (x1.timestamp == last) {
-                                //last = null;
-                                x1.__timestamp = Date.now();
-                                //console.log(x1);
-                                subject.onNext(x1);
-                                if (completed) {
-                                    subject.onCompleted();
-                                }
-                            }
-                        }
-                    );
-
-                    xmod7 = {
-                        value: ws,
-                        timestamp: x.timestamp
-                    };
-
-                    Rx.Observable.just(xmod7)
-                        .delay(7 * unit)
-                        .subscribe(
-                        function (x1) {
-                            if (x1.timestamp == last) {
-                                //last = null;
-                                x1.__timestamp = Date.now();
-                                //console.log(x1);
-                                subject.onNext(x1);
-                                if (completed) {
-                                    subject.onCompleted();
-                                }
-                            }
-                        }
-                    );
-
-                    xmod20 = {
-                        value: cr,
-                        timestamp: x.timestamp
-                    };
-
-                    Rx.Observable.just(xmod20)
-                        .delay(20 * unit)
-                        .subscribe(
-                        function (x1) {
-                            if (x1.timestamp == last) {
-                                //last = null;
-                                x1.__timestamp = Date.now();
-                                //console.log(x1);
-                                subject.onNext(x1);
-                                if (completed) {
-                                    subject.onCompleted();
-                                }
-                            }
-                        }
-                    );
-
-
-                }
-
-
-            },
-            function (e) {
-                subject.onError();
-            },
-            function () {
-                if (completed == false && last == null) {
-                    subject.onCompleted();
-                } else {
-                    completed = true;
-                }
-            }
-        );
-        return subject;
-    }
 
     rxMorse.init = function (props, padsel, tickersel, speakersel, textsel, buttonsel) {
 
@@ -252,8 +237,6 @@ RxMorse = (function () {
             });
 
 
-
-
         var mouse = Rx.Observable.merge(mousedown, mouseup)
             .do(function (e) {
                 e.preventDefault()
@@ -261,8 +244,7 @@ RxMorse = (function () {
             .map(function (e) {
                 return e.type
             })
-            .distinctUntilChanged()
-            .timestamp();
+            .distinctUntilChanged();
 
 
         var keyboard = Rx.Observable.merge(keydown, keyup)
@@ -272,8 +254,7 @@ RxMorse = (function () {
             .map(function (e) {
                 return e.type
             })
-            .distinctUntilChanged()
-            .timestamp();
+            .distinctUntilChanged();
 
         var textsandclicks = Rx.Observable.merge(texts, clicks);
         var flatten = textsandclicks
@@ -317,18 +298,15 @@ RxMorse = (function () {
                     default:
                         return Rx.Observable.throw(new Error('***'));
                 }
-            })
-            .timestamp();
-
-
+            });
 
         var inputs = Rx.Observable.merge(mouse, keyboard, robot);
 
-        var spacer = subjectize(inputs, unit);
+        var spacer = inputs.spacer(unit);
 
         var source = Rx.Observable.merge(spacer)
             .map(function (a) {
-                switch (a.value) {
+                switch (a) {
                     case 'robotdown':
                     case 'keydown':
                     case 'mousedown':
@@ -340,11 +318,12 @@ RxMorse = (function () {
                     case ls:
                     case ws:
                     case cr:
-                        return a.value;
+                        return a;
                     default:
+                        console.log(a);
                         throw new Error('!');
                 }
-            });
+            }).publish();
 
         source.subscribe(function (x) {
             if (x == 'down') {
@@ -431,8 +410,106 @@ RxMorse = (function () {
           }
         );
 
+        source.connect();
+
 
     };
+
+    function subjectize(observable, unit) {
+        var subject = new Rx.Subject();
+        var last = null;
+        var completed = false;
+
+        observable.subscribe(
+            function (x) {
+                //console.log(x);
+                subject.onNext(x);
+                last = x.timestamp;
+
+                if (x.value.endsWith('up')) {
+
+                    xmod3 = {
+                        value: ls,
+                        timestamp: x.timestamp
+                    };
+
+                    Rx.Observable.just(xmod3)
+                        .delay(3 * unit *.9)
+                        .subscribe(
+                        function (x1) {
+                            if (x1.timestamp == last) {
+                                //last = null;
+                                x1.__timestamp = Date.now();
+                                //console.log(x1);
+                                subject.onNext(x1);
+                                if (completed) {
+                                    subject.onCompleted();
+                                }
+                            }
+                        }
+                    );
+
+                    xmod7 = {
+                        value: ws,
+                        timestamp: x.timestamp
+                    };
+
+                    Rx.Observable.just(xmod7)
+                        .delay(7 * unit)
+                        .subscribe(
+                        function (x1) {
+                            if (x1.timestamp == last) {
+                                //last = null;
+                                x1.__timestamp = Date.now();
+                                //console.log(x1);
+                                subject.onNext(x1);
+                                if (completed) {
+                                    subject.onCompleted();
+                                }
+                            }
+                        }
+                    );
+
+                    xmod20 = {
+                        value: cr,
+                        timestamp: x.timestamp
+                    };
+
+                    Rx.Observable.just(xmod20)
+                        .delay(20 * unit)
+                        .subscribe(
+                        function (x1) {
+                            if (x1.timestamp == last) {
+                                //last = null;
+                                x1.__timestamp = Date.now();
+                                //console.log(x1);
+                                subject.onNext(x1);
+                                if (completed) {
+                                    subject.onCompleted();
+                                }
+                            }
+                        }
+                    );
+
+
+                }
+
+
+            },
+            function (e) {
+                subject.onError();
+            },
+            function () {
+                if (completed == false && last == null) {
+                    subject.onCompleted();
+                } else {
+                    completed = true;
+                }
+            }
+        );
+        return subject;
+    }
+
 
     return rxMorse;
 })();
