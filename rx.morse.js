@@ -18,10 +18,10 @@ const sx7 = '.......'; // word space
 const sx20 = '......................'; // sentance space == new line
 
 
-Rx.Observable.prototype.spacer = function (unit) {
+Rx.Observable.prototype.spacer = function (unit, sched) {
 
     var source = this,
-        scheduler = Rx.Scheduler.default;
+        scheduler = sched || Rx.Scheduler.default;
 
     return Rx.Observable.create(function (observer) {
 
