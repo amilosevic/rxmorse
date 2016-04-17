@@ -43,21 +43,21 @@ Rx.Observable.prototype.spacer = function (unit, sched) {
                 });
 
                 // schedule LS
-                scheduler.scheduleFuture(ls, 3 * unit * 1.05, function(sched, x) {
+                scheduler.scheduleFuture(sx3, 3 * unit * 1.05, function(sched, x) {
                     if (!error && last != null && time == last) {
                         observer.onNext(x);
                     }
                 });
 
                 // schedule WS
-                scheduler.scheduleFuture(ws, 7 * unit * 1.05, function(sched, x) {
+                scheduler.scheduleFuture(sx7, 7 * unit * 1.05, function(sched, x) {
                     if (!error && last != null && time == last) {
                         observer.onNext(x);
                     }
                 });
 
                 // schedule CR
-                scheduler.scheduleFuture(cr, 20 * unit * 1.05, function(sched, x) {
+                scheduler.scheduleFuture(sx20, 20 * unit * 1.05, function(sched, x) {
                     if (!error && last != null && time == last) {
                         observer.onNext(x);
                         if (completed) {
@@ -201,7 +201,7 @@ RxMorse = (function () {
 
         };
 
-        var unit = 130;
+        var unit = 150; // ~ 18 wpm  (T = 1200 / W)
 
         var pad = document.getElementById(padsel);
         var ticker = document.getElementById(tickersel);
@@ -315,10 +315,12 @@ RxMorse = (function () {
                     case 'robotup':
                     case 'mouseup':
                         return 'up';
-                    case ls:
-                    case ws:
-                    case cr:
-                        return a;
+                    case sx3:
+                        return ls;
+                    case sx7:
+                        return ws;
+                    case sx20:
+                        return cr;
                     default:
                         console.log(a);
                         throw new Error('!');
