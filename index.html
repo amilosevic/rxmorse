@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Rx Morse (JS)</title>
 
-    <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
+    <script src="http://rsvpjs-builds.s3.amazonaws.com/rsvp-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.async.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.binding.js"></script>
@@ -67,6 +67,31 @@
 
 <script>
     RxMorse.init({}, "pad", "ticker", "speaker", "text", "button");
+
+    var promise1 = new RSVP.Promise(function (resolve, reject) {
+        var client = new XMLHttpRequest();
+        client.open("GET", "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=Albert%20Einstein&srlimit=3&utf8=&format=json", true);
+        client.onreadystatechange = handler;
+        client.responseType = "json";
+        //client.withCredentials = true;
+        client.setRequestHeader("Accept", "application/json");
+        client.send();
+
+        function handler() {
+            if (this.readyState === this.DONE) {
+                if (this.status === 200) { resolve(this.response); }
+                else { reject(this); }
+            }
+        }
+    });
+
+    var source1 = Rx.Observable.fromPromise(promise1);
+
+    var subscription1 = source1.subscribe(
+            function (x) { console.log('onNext: %s', x); },
+            function (e) { console.log('onError: %s', e); },
+            function () { console.log('onCompleted'); });
+
 </script>
 </body>
 </html>
