@@ -150,12 +150,11 @@ RxMorse = (function () {
             'Ü': {'===': '2', '=': 'Đ'},
             'F': {'===': err, '=': 'É'},
             'V': {'===': '3', '=': 'Ŝ'},
-            'H': {'===': '4', '=': '5'}
+            'H': {'===': '4', '=': '5'},
 
             // V level
-            // @todo .. clean up previous levels to confirm to ITU M.1677 : International Morse code
-            // @todo .. fill V level table
-            // @todo .. add 1.1.3 Punctuation marks and miscellaneous signs
+            'Đ': {'===': '?', '=': '_'}
+
 
         };
 
@@ -197,7 +196,9 @@ RxMorse = (function () {
             '7': [dah, dah, dit, dit, dit],
             '8': [dah, dah, dah, dit, dit],
             '9': [dah, dah, dah, dah, dit],
-            '0': [dah, dah, dah, dah, dah]
+            '0': [dah, dah, dah, dah, dah],
+
+            '?': [dit, dit, dah, dah, dit, dah]
 
         };
 
@@ -272,7 +273,7 @@ RxMorse = (function () {
                 } else if (x == '\n') { // handle new line
                     return Rx.Observable.just(sx20);
                 } else {
-                    return Rx.Observable.throw(new Error('** ' + x));
+                    return Rx.Observable.from(morseOut['?'].concat(sx3));
                 }
             })
             .concatMap(function (x) {
