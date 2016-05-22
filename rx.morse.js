@@ -42,29 +42,31 @@ Rx.Observable.prototype.spacer = function (unit, sched) {
                     }
                 });
 
-                // schedule LS
-                scheduler.scheduleFuture(sx3, 3 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                    }
-                });
-
-                // schedule WS
-                scheduler.scheduleFuture(sx7, 7 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                    }
-                });
-
-                // schedule CR
-                scheduler.scheduleFuture(sx20, 20 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                        if (completed) {
-                            observer.onCompleted();
+                if (x.endsWith("up") || x.endsWith("end")) {
+                    // schedule LS
+                    scheduler.scheduleFuture(sx3, 3 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
                         }
-                    }
-                });
+                    });
+
+                    // schedule WS
+                    scheduler.scheduleFuture(sx7, 7 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
+                        }
+                    });
+
+                    // schedule CR
+                    scheduler.scheduleFuture(sx20, 20 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
+                            if (completed) {
+                                observer.onCompleted();
+                            }
+                        }
+                    });
+                }
 
             },
             // onError
@@ -218,6 +220,12 @@ RxMorse = (function () {
         var mouseup = Rx.Observable.fromEvent(pad, 'mouseup')
             .filter(function (e) { return e.button == 0 });
 
+        var touchdown = Rx.Observable.fromEvent(pad, 'touchstart')
+            .filter(function (e) { return true });
+
+        var touchup = Rx.Observable.fromEvent(pad, 'touchend')
+            .filter(function (e) { return true });
+
         var keydown = Rx.Observable.fromEvent(document, 'keydown')
             .filter(function (e) { return e.which == 32 && e.target != button && e.target != text; });
 
@@ -236,6 +244,17 @@ RxMorse = (function () {
             .map(function (e) {
                 return sos;
             });
+
+        var touches = Rx.Observable.merge(touchup, touchdown)
+            .do(function (e) {
+                e.preventDefault()
+            })
+            .map(function (e) {
+                return e.type
+            })
+            .distinctUntilChanged();
+
+
 
 
         var mouse = Rx.Observable.merge(mousedown, mouseup)
@@ -301,9 +320,10 @@ RxMorse = (function () {
                 }
             });
 
-        var inputs = Rx.Observable.merge(mouse, keyboard, robot);
+        var inputs = Rx.Observable.merge(mouse, keyboard, robot, touches);
 
         var spacer = inputs.spacer(unit);
+
 
         var source = Rx.Observable.merge(spacer)
             .map(function (a) {
@@ -311,10 +331,12 @@ RxMorse = (function () {
                     case 'robotdown':
                     case 'keydown':
                     case 'mousedown':
+                    case 'touchstart':
                         return 'down';
                     case 'keyup':
                     case 'robotup':
                     case 'mouseup':
+                    case 'touchend':
                         return 'up';
                     case sx3:
                         return ls;
@@ -328,15 +350,17 @@ RxMorse = (function () {
                 }
             }).publish();
 
-        source.subscribe(function (x) {
-            if (x == 'down') {
-                speaker.currentTime = 0;
-                speaker.volume = 1;
-                speaker.play();
-            } else if (x == 'up') {
-                speaker.pause()
-            }
-        });
+        if (false) {
+            source.subscribe(function (x) {
+                if (x == 'down') {
+                    speaker.currentTime = 0;
+                    speaker.volume = 1;
+                    speaker.play();
+                } else if (x == 'up') {
+                    speaker.pause()
+                }
+            });
+        }
 
         var symbols = source.timeInterval()
             .map(function (e) {
