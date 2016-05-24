@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>Rx Morse (JS)</title>
 
-    <script src="http://rsvpjs-builds.s3.amazonaws.com/rsvp-latest.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.async.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/4.0.7/rx.binding.js"></script>
@@ -68,22 +69,17 @@
 <script>
     RxMorse.init({}, "pad", "ticker", "speaker", "text", "button");
 
-    var promise1 = new RSVP.Promise(function (resolve, reject) {
-        var client = new XMLHttpRequest();
-        client.open("GET", "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=Albert%20Einstein&srlimit=3&utf8=&format=json", true);
-        client.onreadystatechange = handler;
-        client.responseType = "json";
-        //client.withCredentials = true;
-        client.setRequestHeader("Accept", "application/json");
-        client.send();
-
-        function handler() {
-            if (this.readyState === this.DONE) {
-                if (this.status === 200) { resolve(this.response); }
-                else { reject(this); }
-            }
+    var promise1 = $.ajax({
+        url: 'http://en.wikipedia.org/w/api.php',
+        dataType: 'jsonp',
+        data: {
+            action: 'query',
+            list: 'search',
+            format: 'json',
+            srsearch: "RX",
+            srlimit: 3
         }
-    });
+    }).promise();
 
     var source1 = Rx.Observable.fromPromise(promise1);
 
