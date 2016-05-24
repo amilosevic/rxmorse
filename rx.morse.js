@@ -42,29 +42,31 @@ Rx.Observable.prototype.spacer = function (unit, sched) {
                     }
                 });
 
-                // schedule LS
-                scheduler.scheduleFuture(sx3, 3 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                    }
-                });
-
-                // schedule WS
-                scheduler.scheduleFuture(sx7, 7 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                    }
-                });
-
-                // schedule CR
-                scheduler.scheduleFuture(sx20, 20 * unit * 1.05, function(sched, x) {
-                    if (!error && last != null && time == last) {
-                        observer.onNext(x);
-                        if (completed) {
-                            observer.onCompleted();
+                if (x.endsWith("up") || x.endsWith("end")) {
+                    // schedule LS
+                    scheduler.scheduleFuture(sx3, 3 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
                         }
-                    }
-                });
+                    });
+
+                    // schedule WS
+                    scheduler.scheduleFuture(sx7, 7 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
+                        }
+                    });
+
+                    // schedule CR
+                    scheduler.scheduleFuture(sx20, 20 * unit * 1.05, function (sched, x) {
+                        if (!error && last != null && time == last) {
+                            observer.onNext(x);
+                            if (completed) {
+                                observer.onCompleted();
+                            }
+                        }
+                    });
+                }
 
             },
             // onError
@@ -150,12 +152,11 @@ RxMorse = (function () {
             'Ü': {'===': '2', '=': 'Đ'},
             'F': {'===': err, '=': 'É'},
             'V': {'===': '3', '=': 'Ŝ'},
-            'H': {'===': '4', '=': '5'}
+            'H': {'===': '4', '=': '5'},
 
             // V level
-            // @todo .. clean up previous levels to confirm to ITU M.1677 : International Morse code
-            // @todo .. fill V level table
-            // @todo .. add 1.1.3 Punctuation marks and miscellaneous signs
+            'Đ': {'===': '?', '=': '_'}
+
 
         };
 
@@ -197,7 +198,9 @@ RxMorse = (function () {
             '7': [dah, dah, dit, dit, dit],
             '8': [dah, dah, dah, dit, dit],
             '9': [dah, dah, dah, dah, dit],
-            '0': [dah, dah, dah, dah, dah]
+            '0': [dah, dah, dah, dah, dah],
+
+            '?': [dit, dit, dah, dah, dit, dah]
 
         };
 
@@ -217,6 +220,12 @@ RxMorse = (function () {
         var mouseup = Rx.Observable.fromEvent(pad, 'mouseup')
             .filter(function (e) { return e.button == 0 });
 
+        var touchdown = Rx.Observable.fromEvent(pad, 'touchstart')
+            .filter(function (e) { return true });
+
+        var touchup = Rx.Observable.fromEvent(pad, 'touchend')
+            .filter(function (e) { return true });
+
         var keydown = Rx.Observable.fromEvent(document, 'keydown')
             .filter(function (e) { return e.which == 32 && e.target != button && e.target != text; });
 
@@ -235,6 +244,17 @@ RxMorse = (function () {
             .map(function (e) {
                 return sos;
             });
+
+        var touches = Rx.Observable.merge(touchup, touchdown)
+            .do(function (e) {
+                e.preventDefault()
+            })
+            .map(function (e) {
+                return e.type
+            })
+            .distinctUntilChanged();
+
+
 
 
         var mouse = Rx.Observable.merge(mousedown, mouseup)
@@ -272,7 +292,7 @@ RxMorse = (function () {
                 } else if (x == '\n') { // handle new line
                     return Rx.Observable.just(sx20);
                 } else {
-                    return Rx.Observable.throw(new Error('** ' + x));
+                    return Rx.Observable.from(morseOut['?'].concat(sx3));
                 }
             })
             .concatMap(function (x) {
@@ -300,9 +320,10 @@ RxMorse = (function () {
                 }
             });
 
-        var inputs = Rx.Observable.merge(mouse, keyboard, robot);
+        var inputs = Rx.Observable.merge(mouse, keyboard, robot, touches);
 
         var spacer = inputs.spacer(unit);
+
 
         var source = Rx.Observable.merge(spacer)
             .map(function (a) {
@@ -310,10 +331,12 @@ RxMorse = (function () {
                     case 'robotdown':
                     case 'keydown':
                     case 'mousedown':
+                    case 'touchstart':
                         return 'down';
                     case 'keyup':
                     case 'robotup':
                     case 'mouseup':
+                    case 'touchend':
                         return 'up';
                     case sx3:
                         return ls;
@@ -327,15 +350,17 @@ RxMorse = (function () {
                 }
             }).publish();
 
-        source.subscribe(function (x) {
-            if (x == 'down') {
-                speaker.currentTime = 0;
-                speaker.volume = 1;
-                speaker.play();
-            } else if (x == 'up') {
-                speaker.pause()
-            }
-        });
+        if (false) {
+            source.subscribe(function (x) {
+                if (x == 'down') {
+                    speaker.currentTime = 0;
+                    speaker.volume = 1;
+                    speaker.play();
+                } else if (x == 'up') {
+                    speaker.pause()
+                }
+            });
+        }
 
         var symbols = source.timeInterval()
             .map(function (e) {
